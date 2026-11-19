@@ -1,0 +1,9 @@
+{
+  "appId": "com.senmaydev.turbostrike",
+  "appName": "Turbo Strike",
+  "webDir": "www",
+  "backgroundColor": "#05080f",
+  "android": {
+    "allowMixedContent": false
+  }
+}
