@@ -318,7 +318,7 @@ RL.Menu = (function () {
     if (name === 'play') { refreshMapTabs(); buildTiles(); }
     if (name === 'profile') refreshProfile();
     if (name === 'options') buildOptions();
-    game.camera.mode = 'free';
+    if (!optionsReturn && game.state === 'menu') game.camera.mode = 'free';
   }
   function hide() { screen = 'none'; $('menu').classList.add('hidden'); removeShowcase(); }
   function back() {

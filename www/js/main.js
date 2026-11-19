@@ -147,12 +147,46 @@ RL.Game = (function () {
     const params = new URLSearchParams(location.search);
     const autoMatch = params.get('match');
     const boot = document.getElementById('boot');
+    const teamIntro = document.getElementById('team-intro');
+    const showTeamIntro = () => {
+      if (!teamIntro) { toMenu(); return; }
+      game.state = 'intro';
+      RL.Audio.startMusic();
+      const tih = document.getElementById('tihint');
+      if (tih && RL.HUD.isTouchDevice()) tih.textContent = 'TAP ANYWHERE TO CONTINUE';
+      teamIntro.classList.remove('hidden');
+      requestAnimationFrame(() => teamIntro.classList.add('show'));
+      let done = false, autoTimer = null, gpTimer = null;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(autoTimer); clearInterval(gpTimer);
+        window.removeEventListener('keydown', finish);
+        window.removeEventListener('mousedown', finish);
+        window.removeEventListener('touchstart', finish);
+        window.removeEventListener('pointerdown', finish);
+        teamIntro.classList.remove('show');
+        setTimeout(() => teamIntro.remove(), 480);
+        toMenu();
+        setTimeout(() => RL.Input.clearEdges(), 0);
+      };
+      // short delay so the key/tap that dismissed boot doesn't instantly skip the team intro
+      setTimeout(() => {
+        if (done) return;
+        window.addEventListener('keydown', finish);
+        window.addEventListener('mousedown', finish);
+        window.addEventListener('touchstart', finish, { passive: true });
+        window.addEventListener('pointerdown', finish);
+        gpTimer = setInterval(() => { const pads = navigator.getGamepads ? navigator.getGamepads() : []; for (const p of pads) if (p && p.buttons.some((b) => b.pressed)) finish(); }, 200);
+      }, 350);
+      autoTimer = setTimeout(finish, 6500);
+    };
     const go = () => {
       if (game.state !== 'boot') return;
       RL.Audio.unlock(); RL.Audio.setVolumes(game.settings.audio);
       boot.style.transition = 'opacity .5s'; boot.style.opacity = '0'; setTimeout(() => boot.remove(), 550);
-      if (autoMatch) { startMatch({ mode: autoMatch, botPlayer: params.get('botplayer') === '1', map: params.get('map') || undefined }); }
-      else toMenu();
+      if (autoMatch) { if (teamIntro) teamIntro.remove(); startMatch({ mode: autoMatch, botPlayer: params.get('botplayer') === '1', map: params.get('map') || undefined }); }
+      else showTeamIntro();
       setTimeout(() => RL.Input.clearEdges(), 0);
     };
     if (autoMatch) go();

@@ -99,6 +99,11 @@ RL.Match = (function () {
     // ---------- main update ----------
     update(dt) {
       const inp = RL.Input;
+      // in-game options open: ESC / Back closes options back to pause menu
+      if (RL.Menu.screen !== 'none') {
+        if (inp.consume('pause') || inp.consume('menuBack')) RL.Menu.back();
+        return;
+      }
       // pause
       if (inp.consume('pause')) {
         if (this.paused) this.resume();
@@ -397,7 +402,11 @@ RL.Match = (function () {
       ]);
       RL.Audio.stopLoops();
     }
-    resume() { this.paused = false; this.game.setPaused(false); RL.HUD.hidePause(); RL.Input.clearEdges(); }
+    resume() {
+      this.paused = false; this.game.setPaused(false);
+      if (['countdown', 'play', 'goal'].includes(this.phase)) this.camera.setFollow();
+      RL.HUD.hidePause(); RL.Input.clearEdges();
+    }
     updatePauseMenu() {
       const inp = RL.Input;
       if (inp.consume('menuUp')) RL.HUD.pauseNav(-1);

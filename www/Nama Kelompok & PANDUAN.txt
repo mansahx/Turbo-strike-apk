@@ -1,0 +1,87 @@
+TURBO STRIKE - CAR SOCCER (game browser, Three.js)
+=================================================
+
+Nama Kelompok:
+
+1.Muhammad Ibramansah (231080200103)
+2.M Khansa Gian Ramanda (231080200154)
+3.Kevin Ilhza Pradita (231080200033)
+4.Haselinda Angelina (231080200140)
+5.Amanda Salsabilla (231080200179)
+
+Game sepak bola mobil 3D di browser: mobil bisa boost, lompat, double jump, flip dan
+terbang (aerial), bot lawan yang cerdas, kickoff, gol dengan ledakan + replay, overtime,
+papan skor, garage, toko mobil dan mode karier dengan uang.
+
+
+CARA MAIN
+---------
+
+Ekstrak ZIP terlebih dahulu, lalu klik dua kali "Turbo Strike.html" (disarankan Chrome atau
+Edge). Tidak perlu server atau instalasi.
+
+Tekan tombol apa saja di layar loading, lalu PLAY -> pilih map -> pilih LEVEL atau
+QUICK MATCH.
+
+
+FITUR BARU (REVISI)
+-------------------
+
+1. Mode KARIER - 3 level per map, harus menang di level sebelumnya untuk membuka level
+   berikutnya.
+
+   GREENFIELD PARK (map 1, siang)       NEON CITY (map 2, malam)
+   Level 1  Rookie Cup   1v1  $500       Level 1  Night Duel     1v1  $1.000
+   Level 2  Pro Cup      2v2  $800       Level 2  Neon Doubles   2v2  $1.500
+   Level 3  All-Star Cup 3v3  $1.200     Level 3  City Finals    3v3  $2.500
+
+2. UANG - setiap MENANG mendapat uang: hadiah level + bonus $50 untuk setiap gol yang kamu
+   cetak. Quick Match yang dimenangkan memberi $200. Kalah = tidak dapat uang.
+   Saldo tampil di kanan atas menu dan di layar akhir pertandingan.
+
+3. CAR SHOP - beli mobil baru dengan uang hasil menang:
+   STRIKER    gratis   seimbang
+   BULLDOG    gratis   seimbang
+   VIPER GT   $1.500   akselerasi lebih cepat
+   TITAN      $2.500   boost 20% lebih hemat
+   PHANTOM X  $4.000   akselerasi, boost dan top speed tertinggi
+   Mobil yang sudah dibeli bisa dipilih (EQUIP) di Car Shop atau Garage.
+
+4. MAP KEDUA "NEON CITY" - stadion malam dengan langit berbintang, bulan, gedung-gedung kota
+   dengan lampu neon, lapangan biru gelap dengan garis neon. Dibuka dengan harga $3.000
+   (klik kartu map NEON CITY di layar PLAY).
+
+Progres (uang, mobil, map, level) tersimpan otomatis di browser (localStorage).
+
+
+KONTROL (keyboard + mouse)
+--------------------------
+
+Gas / mundur .................. W / S (juga pitch di udara)
+Belok ......................... A / D (juga yaw di udara)
+Lompat / double jump / flip ... SPASI atau klik kanan
+Boost ......................... SHIFT atau klik kiri
+Powerslide / air roll ......... CTRL (tahan)
+Air roll kiri / kanan ......... Q / E
+Ball cam ...................... Y atau C
+Lihat belakang ................ R (tahan)
+Papan skor .................... TAB (tahan)
+Pause ......................... ESC
+Lewati replay ................. SPASI / ENTER
+Ganti map di layar PLAY ....... Q / E
+
+Gamepad juga didukung (A lompat, B boost, X powerslide, Y ball cam, RT/LT gas).
+
+
+STRUKTUR KODE
+-------------
+
+js/career.js    data map, level, mobil, harga, hadiah dan aturan buka/kunci (BARU)
+js/main.js      boot, renderer, ganti map (applyMap), pembayaran hadiah saat match selesai
+js/menu.js      menu utama, layar PLAY (map + level), CAR SHOP, garage, options, profile
+js/match.js     alur pertandingan, gol, replay, layar akhir + tombol NEXT LEVEL
+js/stadium.js   stadion + latar siang (gunung) dan malam (kota neon)
+js/arena.js     lapangan, dinding, gawang, boost pad + tema per map
+js/carmodel.js  model 3D mobil (5 bodi)
+js/car.js       fisika mobil (+ statistik per mobil)
+js/bot.js       AI bot (rookie / pro / all-star)
