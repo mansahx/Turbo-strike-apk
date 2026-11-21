@@ -29,7 +29,6 @@ jobs:
         run: npm install
 
       - name: Prepare web assets
-        run: npm run prepare:web
         run: |
           if [ -f "Turbo Strike.html" ]; then
             mkdir -p www
@@ -71,4 +70,3 @@ jobs:
         with:
           files: TurboStrike.apk
           generate_release_notes: true
-
