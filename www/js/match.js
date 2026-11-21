@@ -167,11 +167,12 @@ RL.Match = (function () {
       if (!this.player.isBot && !this.player.demolished) RL.Input.applyTo(this.player);
       // fixed-step simulation
       this.acc += Math.min(dt, 0.1);
+      const maxSteps = RL.IS_MOBILE ? 6 : 10;
       let steps = 0;
-      while (this.acc >= H && steps < 10) {
+      while (this.acc >= H && steps < maxSteps) {
         this.stepSim(H); this.acc -= H; steps++;
       }
-      if (steps === 10) this.acc = 0;
+      if (steps === maxSteps) this.acc = 0;
       // clock
       if (this.phase === 'play') {
         if (!this.overtime) { this.clock -= dt; if (this.clock <= 0) { this.clock = 0; this.timeUp = true; } }
@@ -305,6 +306,7 @@ RL.Match = (function () {
       this.game.onGoalScored && this.game.onGoalScored(team, scorer);
     }
     recordFrame() {
+      if (RL.IS_MOBILE) { this.recSkip = !this.recSkip; if (this.recSkip) return; }
       const f = { t: this.time, ball: [this.ball.pos.x, this.ball.pos.y, this.ball.pos.z, this.ball.q.x, this.ball.q.y, this.ball.q.z, this.ball.q.w, this.ball.visible ? 1 : 0], cars: [] };
       for (const c of this.cars) f.cars.push([c.pos.x, c.pos.y, c.pos.z, c.q.x, c.q.y, c.q.z, c.q.w, c.boosting ? 1 : 0, c.demolished ? 0 : 1, c.supersonic ? 1 : 0]);
       this.frames.push(f);

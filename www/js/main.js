@@ -36,6 +36,11 @@ RL.Game = (function () {
   }
   function pixelRatioFor(q) {
     const dpr = window.devicePixelRatio || 1;
+    if (RL.IS_MOBILE) {
+      if (q === 'high') return Math.min(dpr, 1.25);
+      if (q === 'medium') return Math.min(dpr, 0.9);
+      return Math.min(dpr, 0.72);
+    }
     if (q === 'high') return Math.min(dpr, 1.5);
     if (q === 'medium') return Math.min(dpr, game.iGPU ? 0.9 : 1.0);
     return Math.min(dpr, 0.75);
@@ -45,11 +50,14 @@ RL.Game = (function () {
     game.quality = q;
     const r = game.renderer;
     r.setPixelRatio(pixelRatioFor(q));
-    r.shadowMap.type = q === 'high' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
-    const size = q === 'high' ? 2048 : 1024;
-    if (game.stadium) game.stadium.group.traverse((o) => { if (o.isInstancedMesh && o.userData.crowd) o.count = q === 'low' ? Math.floor(o.userData.full * 0.5) : o.userData.full; });
-    if (game.sun.shadow.mapSize.x !== size) { game.sun.shadow.mapSize.set(size, size); if (game.sun.shadow.map) { game.sun.shadow.map.dispose(); game.sun.shadow.map = null; } }
-    game.sun.castShadow = true;
+    const useShadows = q !== 'low';
+    r.shadowMap.enabled = useShadows;
+    r.shadowMap.type = q === 'high' ? THREE.PCFSoftShadowMap : (RL.IS_MOBILE ? THREE.BasicShadowMap : THREE.PCFShadowMap);
+    const size = q === 'high' ? (RL.IS_MOBILE ? 1024 : 2048) : (RL.IS_MOBILE ? 512 : 1024);
+    const crowdScale = q === 'low' ? (RL.IS_MOBILE ? 0 : 0.25) : (q === 'medium' ? (RL.IS_MOBILE ? 0.35 : 1) : (RL.IS_MOBILE ? 0.6 : 1));
+    if (game.stadium) game.stadium.group.traverse((o) => { if (o.isInstancedMesh && o.userData.crowd) { o.count = Math.floor(o.userData.full * crowdScale); o.visible = o.count > 0; } });
+    if (useShadows && game.sun.shadow.mapSize.x !== size) { game.sun.shadow.mapSize.set(size, size); if (game.sun.shadow.map) { game.sun.shadow.map.dispose(); game.sun.shadow.map = null; } }
+    game.sun.castShadow = useShadows;
     RL.FX.setQuality(q, r);
     onResize();
   }
@@ -88,8 +96,10 @@ RL.Game = (function () {
     const scene = new THREE.Scene(); game.scene = scene;
     scene.fog = new THREE.FogExp2(0xc9dcf2, 0.000015);
     // lights
-    const sun = new THREE.DirectionalLight(0xfff1dc, 3.1); sun.position.copy(game.sunDir).multiplyScalar(20000); sun.castShadow = true;
-    const shSize = game.quality === 'high' ? 2048 : 1024;
+    const sun = new THREE.DirectionalLight(0xfff1dc, 3.1); sun.position.copy(game.sunDir).multiplyScalar(20000); sun.castShadow = game.quality !== 'low';
+    const shSize = game.quality === 'high' ? (RL.IS_MOBILE ? 1024 : 2048) : (RL.IS_MOBILE ? 512 : 1024);
+    renderer.shadowMap.enabled = game.quality !== 'low';
+    renderer.shadowMap.type = game.quality === 'high' ? THREE.PCFSoftShadowMap : (RL.IS_MOBILE ? THREE.BasicShadowMap : THREE.PCFShadowMap);
     sun.shadow.mapSize.set(shSize, shSize);
     sun.shadow.camera.near = 8000; sun.shadow.camera.far = 32000; sun.shadow.bias = -0.0003; sun.shadow.normalBias = 3;
     sun.shadow.camera.left = -3000; sun.shadow.camera.right = 3000; sun.shadow.camera.top = 3000; sun.shadow.camera.bottom = -3000;
@@ -100,11 +110,12 @@ RL.Game = (function () {
     Object.assign(game.camera.settings, game.settings.camera); game.camera.applyFov();
     progress(0.1);
     const bt = { start: performance.now() }; game.bootTimes = bt;
-    await defer(() => { game.stadium = RL.Stadium.build(scene, game.sunDir); bt.stadium = performance.now() - bt.start; if (game.quality === 'low') setQuality('low'); });
+    await defer(() => { game.stadium = RL.Stadium.build(scene, game.sunDir); bt.stadium = performance.now() - bt.start; if (game.quality !== 'high' || RL.IS_MOBILE) { const cs = game.quality === 'low' ? (RL.IS_MOBILE ? 0 : 0.25) : (RL.IS_MOBILE ? 0.35 : 1); game.stadium.group.traverse((o) => { if (o.isInstancedMesh && o.userData.crowd) { o.count = Math.floor(o.userData.full * cs); o.visible = o.count > 0; } }); } });
     progress(0.35);
+    const cubeSize = RL.IS_MOBILE ? 128 : 256;
     await defer(() => {
       // first environment capture (stadium only) so the arena glass and walls can reflect it
-      const rt = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType });
+      const rt = new THREE.WebGLCubeRenderTarget(cubeSize, { type: THREE.HalfFloatType });
       const cc = new THREE.CubeCamera(50, 80000, rt); cc.position.set(0, 0, 400);
       cc.update(renderer, scene);
       game.envCube = rt.texture; game.envCubeRT = rt;
@@ -115,7 +126,7 @@ RL.Game = (function () {
     progress(0.7);
     await defer(() => {
       // full environment (arena included) for car / ball reflections
-      const rt = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType });
+      const rt = new THREE.WebGLCubeRenderTarget(cubeSize, { type: THREE.HalfFloatType });
       const cc = new THREE.CubeCamera(50, 80000, rt); cc.position.set(0, 0, 400);
       const glass = game.arena.volume; const gv = glass.visible; glass.visible = true;
       cc.update(renderer, scene);
@@ -212,8 +223,8 @@ RL.Game = (function () {
   // render car thumbnails for the playlist tiles
   function makeTileImages() {
     const r = game.renderer; const out = [];
-    const W = 512, Hh = 360;
-    const rt = new THREE.WebGLRenderTarget(W, Hh, { samples: 4 });
+    const W = RL.IS_MOBILE ? 256 : 512, Hh = RL.IS_MOBILE ? 180 : 360;
+    const rt = new THREE.WebGLRenderTarget(W, Hh, { samples: RL.IS_MOBILE ? 0 : 4 });
     const sc = new THREE.Scene();
     sc.add(new THREE.HemisphereLight(0xa9c8ff, 0x203040, 1.2));
     const dl = new THREE.DirectionalLight(0xffffff, 2.5); dl.position.set(-300, -200, 500); sc.add(dl);
@@ -259,12 +270,13 @@ RL.Game = (function () {
     const hidden = [];
     for (const o of scene.children) if (o !== game.stadium.group && o !== game.arena.group && !o.isLight && o.visible) { o.visible = false; hidden.push(o); }
     game.arena.group.visible = false;
-    const rt0 = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType });
+    const cubeSize = RL.IS_MOBILE ? 128 : 256;
+    const rt0 = new THREE.WebGLCubeRenderTarget(cubeSize, { type: THREE.HalfFloatType });
     const c0 = new THREE.CubeCamera(50, 80000, rt0); c0.position.set(0, 0, 400); c0.update(r, scene);
     game.arena.group.visible = true;
     if (game.arena.glassMat.uniforms) game.arena.glassMat.uniforms.envMap.value = rt0.texture;
     if (game.envCubeRT) game.envCubeRT.dispose(); game.envCubeRT = rt0; game.envCube = rt0.texture;
-    const rt = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType });
+    const rt = new THREE.WebGLCubeRenderTarget(cubeSize, { type: THREE.HalfFloatType });
     const cc = new THREE.CubeCamera(50, 80000, rt); cc.position.set(0, 0, 400);
     const glass = game.arena.volume; const gv = glass.visible; glass.visible = true;
     cc.update(r, scene); glass.visible = gv;
@@ -344,11 +356,13 @@ RL.Game = (function () {
       game.match.update(dt);
       RL.Arena.updatePads(game.arena.pads, dt, game.time);
       // shadow frustum follows the action
-      const m = game.match; const c = m.player.pos, b = m.ball.visible ? m.ball.pos : c;
-      const cx = (c.x + b.x) * 0.5, cy = (c.y + b.y) * 0.5;
-      const size = U.clamp(Math.hypot(c.x - b.x, c.y - b.y) * 0.6 + 1400, 2000, 4200);
-      const sc = game.sun.shadow.camera; sc.left = -size; sc.right = size; sc.top = size; sc.bottom = -size; sc.updateProjectionMatrix();
-      game.sun.position.set(cx, cy, 0).addScaledVector(game.sunDir, 20000); game.sun.target.position.set(cx, cy, 0); game.sun.target.updateMatrixWorld();
+      if (game.sun.castShadow) {
+        const m = game.match; const c = m.player.pos, b = m.ball.visible ? m.ball.pos : c;
+        const cx = (c.x + b.x) * 0.5, cy = (c.y + b.y) * 0.5;
+        const size = U.clamp(Math.hypot(c.x - b.x, c.y - b.y) * 0.6 + 1400, 2000, 4200);
+        const sc = game.sun.shadow.camera; sc.left = -size; sc.right = size; sc.top = size; sc.bottom = -size; sc.updateProjectionMatrix();
+        game.sun.position.set(cx, cy, 0).addScaledVector(game.sunDir, 20000); game.sun.target.position.set(cx, cy, 0); game.sun.target.updateMatrixWorld();
+      }
     } else if (game.state === 'menu') {
       RL.Menu.update(dt, game.time);
       const sc = RL.Menu.showcase; const cx = sc ? sc.pos.x : 0, cy = sc ? sc.pos.y : 0;
@@ -373,7 +387,8 @@ RL.Game = (function () {
     autoChecked = true;
     const avg = game.fpsSamples.reduce((a, b) => a + b, 0) / game.fpsSamples.length;
     if (new URLSearchParams(location.search).get('noauto')) return;
-    if (avg < 40 && game.quality !== 'low') { const q = game.quality === 'high' ? 'medium' : 'low'; game.settings.video.quality = q; setQuality(q); saveSettings(); console.info('Auto quality ->', q, 'avg fps', avg.toFixed(1)); }
+    const minFps = RL.IS_MOBILE ? 45 : 40;
+    if (avg < minFps && game.quality !== 'low') { const q = game.quality === 'high' ? 'medium' : 'low'; game.settings.video.quality = q; setQuality(q); saveSettings(); console.info('Auto quality ->', q, 'avg fps', avg.toFixed(1)); }
   }
   Object.assign(game, { init, applyMap, startMatch, rematch, toMenu, saveSettings, applySettings, setQuality, setPaused });
   // harness / debug API

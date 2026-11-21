@@ -24,7 +24,7 @@ RL.U = (function () {
     const t = new THREE.CanvasTexture(c);
     opts = opts || {};
     t.wrapS = t.wrapT = opts.repeat ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
-    t.anisotropy = opts.aniso || 8;
+    t.anisotropy = RL.IS_MOBILE ? Math.min(opts.aniso || 4, 2) : (opts.aniso || 8);
     t.colorSpace = opts.linear ? THREE.NoColorSpace : THREE.SRGBColorSpace;
     if (opts.nearest) t.magFilter = THREE.NearestFilter;
     t.needsUpdate = true;

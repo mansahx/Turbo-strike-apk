@@ -234,7 +234,7 @@ RL.Stadium = (function () {
   }
 
   function skyTexture(sunDir) {
-    const W = 1536, H = 768; const c = U.canvas(W, H), g = c.getContext('2d');
+    const W = RL.IS_MOBILE ? 768 : 1536, H = RL.IS_MOBILE ? 384 : 768; const c = U.canvas(W, H), g = c.getContext('2d');
     const img = g.createImageData(W, H); const d = img.data;
     const noise = U.makeNoise(21);
     const sunU = (Math.atan2(sunDir.y, sunDir.x) / (2 * Math.PI) + 0.5), sunV = Math.asin(U.clamp(sunDir.z, -1, 1)) / Math.PI + 0.5;
@@ -360,7 +360,7 @@ RL.Stadium = (function () {
 
   // ---------- Neon City (night) backdrop ----------
   function nightSkyTexture() {
-    const W = 2048, H = 1024; const c = U.canvas(W, H), g = c.getContext('2d');
+    const W = RL.IS_MOBILE ? 1024 : 2048, H = RL.IS_MOBILE ? 512 : 1024; const c = U.canvas(W, H), g = c.getContext('2d');
     const grd = g.createLinearGradient(0, 0, 0, H);
     grd.addColorStop(0, '#03030a'); grd.addColorStop(0.28, '#080a22'); grd.addColorStop(0.42, '#1a1046'); grd.addColorStop(0.48, '#4a1a6e'); grd.addColorStop(0.5, '#7a2a7a');
     grd.addColorStop(0.53, '#1a0c26'); grd.addColorStop(1, '#05040a');

@@ -55,3 +55,4 @@ RL.TEAM = { BLUE: 0, ORANGE: 1 };
 RL.TEAM_COLOR = ['#1f7fff', '#ff8a00'];
 RL.TEAM_COLOR_DARK = ['#0d3b8c', '#a04a00'];
 RL.TEAM_NAME = ['BLUE', 'ORANGE'];
+RL.IS_MOBILE = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent || '') || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) <= 900);

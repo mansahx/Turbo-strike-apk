@@ -76,7 +76,7 @@ RL.Arena = (function () {
   };
   function fieldTexture(themeId) {
     const th = FIELD_THEMES[themeId] || FIELD_THEMES.greenfield;
-    const W = 2048, H = 2560;
+    const W = RL.IS_MOBILE ? 1024 : 2048, H = RL.IS_MOBILE ? 1280 : 2560;
     const c = U.canvas(W, H), g = c.getContext('2d');
     const sx = W / 8192, sy = H / 10240;
     const toX = (x) => (x + 4096) * sx, toY = (y) => (5120 - y) * sy;
@@ -159,8 +159,10 @@ RL.Arena = (function () {
   }
   function drawLogo(g, x, y, s, color) { U.drawEmblem(g, x, y, s, color); }
   function boardsTexture(teamHex) {
+    const mob = RL.IS_MOBILE;
     const W = 2048, H = 512;
-    const c = U.canvas(W, H), g = c.getContext('2d');
+    const c = U.canvas(mob ? 1024 : W, mob ? 256 : H), g = c.getContext('2d');
+    if (mob) g.scale(0.5, 0.5);
     g.fillStyle = '#0b0d12'; g.fillRect(0, 0, W, H);
     g.fillStyle = '#12151c'; g.fillRect(24, 28, 976, H - 56);
     g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = 4; g.strokeRect(24, 28, 976, H - 56);
@@ -187,11 +189,14 @@ RL.Arena = (function () {
     return U.canvasTexture(c, { repeat: true, aniso: 8 });
   }
   function ballTexture() {
-    const W = 1024, H = 512; const c = U.canvas(W, H), g = c.getContext('2d');
+    const mob = RL.IS_MOBILE;
+    const W = mob ? 512 : 1024, H = mob ? 256 : 512; const c = U.canvas(W, H), g = c.getContext('2d');
     g.fillStyle = '#93927a'; g.fillRect(0, 0, W, H);
     const noise = U.makeNoise(3); const img = g.getImageData(0, 0, W, H); const d = img.data;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = (y * W + x) * 4; const n = (noise.fbm(x * 0.05, y * 0.05, 3) - 0.5) * 22; d[i] += n; d[i + 1] += n; d[i + 2] += n * 0.8; }
+    const nf = mob ? 0.1 : 0.05;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = (y * W + x) * 4; const n = (noise.fbm(x * nf, y * nf, 3) - 0.5) * 22; d[i] += n; d[i + 1] += n; d[i + 2] += n * 0.8; }
     g.putImageData(img, 0, 0);
+    if (mob) g.scale(0.5, 0.5);
     g.strokeStyle = 'rgba(30,32,28,0.92)'; g.lineWidth = 9; g.lineJoin = 'round';
     const R = 64, h = Math.sqrt(3) / 2 * R;
     const hexPath = (cx, cy, rr) => { g.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; const x = cx + rr * Math.cos(a), y = cy + rr * Math.sin(a); if (i === 0) g.moveTo(x, y); else g.lineTo(x, y); } g.closePath(); g.stroke(); };

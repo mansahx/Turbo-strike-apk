@@ -103,7 +103,8 @@ RL.FX = (function () {
   }
   const _c = new THREE.Color();
   function spawn(pos, vel, size, color, life, opts) {
-    if (particles.length >= MAXP) particles.shift();
+    const cap = quality === 'low' ? 220 : (RL.IS_MOBILE ? 360 : MAXP);
+    if (particles.length >= cap) particles.shift();
     _c.set(color);
     particles.push({ x: pos.x, y: pos.y, z: pos.z, vx: vel.x, vy: vel.y, vz: vel.z, life, maxLife: life, size, r: _c.r, g: _c.g, b: _c.b, gravity: opts && opts.gravity !== undefined ? opts.gravity : 0, drag: opts && opts.drag !== undefined ? opts.drag : 1.5, shrink: opts && opts.shrink !== undefined ? opts.shrink : 1 });
   }
@@ -156,13 +157,13 @@ RL.FX = (function () {
     const sphere = mk(sphereGeo, 0xffffff, 1.0);
     const sphere2 = mk(sphereGeo, col, 0.7);
     explosions.push({ groundRing, wallRing, sphere, sphere2, t: 0, col, dirSign: dirSign || -Math.sign(pos.y) });
-    const n = quality === 'low' ? 120 : 260;
+    const n = quality === 'low' ? 70 : (RL.IS_MOBILE ? 120 : 260);
     burst(pos, n, 3000, 80, col, 2.2, { gravity: 900, drag: 0.7, up: 1300 });
     burst(pos, n * 0.5, 2000, 120, 0xffffff, 1.4, { gravity: 700, drag: 1.0, up: 900 });
-    burst(pos, 40, 900, 360, col, 0.9, { drag: 2.0 });
-    burst(pos, 24, 300, 700, col, 1.6, { drag: 1.0, shrink: 0 });
+    burst(pos, quality === 'low' ? 18 : 40, 900, 360, col, 0.9, { drag: 2.0 });
+    burst(pos, quality === 'low' ? 10 : 24, 300, 700, col, 1.6, { drag: 1.0, shrink: 0 });
     // a wave of sparks along the ground
-    for (let i = 0; i < (quality === 'low' ? 40 : 90); i++) { const a = Math.random() * Math.PI * 2; _v.set(Math.cos(a) * 2600, Math.sin(a) * 2600, 120 + Math.random() * 300); _v2.copy(pos); _v2.z = 30; spawn(_v2, _v, 40 + Math.random() * 40, Math.random() < 0.5 ? col : 0xffffff, 1.2 + Math.random() * 0.6, { gravity: 300, drag: 0.8 }); }
+    for (let i = 0; i < (quality === 'low' ? 24 : (RL.IS_MOBILE ? 45 : 90)); i++) { const a = Math.random() * Math.PI * 2; _v.set(Math.cos(a) * 2600, Math.sin(a) * 2600, 120 + Math.random() * 300); _v2.copy(pos); _v2.z = 30; spawn(_v2, _v, 40 + Math.random() * 40, Math.random() < 0.5 ? col : 0xffffff, 1.2 + Math.random() * 0.6, { gravity: 300, drag: 0.8 }); }
   }
   function updateExplosions(dt) {
     for (let i = explosions.length - 1; i >= 0; i--) {
@@ -211,7 +212,7 @@ RL.FX = (function () {
         fx.jet.scale.set(fl * (1 + car.speed / 4000), 1 + 0.25 * Math.sin(fx.t * 53), 1 + 0.25 * Math.cos(fx.t * 47));
         // glow at the nozzle + sparks
         spawn(_v, _v2.set(0, 0, 0), 62 * fl, 0xffa040, 0.05, { drag: 0, shrink: 0 });
-        if (Math.random() < 0.6) {
+        if (Math.random() < (quality === 'low' || RL.IS_MOBILE ? 0.28 : 0.6)) {
           _v2.copy(car.fwd).multiplyScalar(-600 - Math.random() * 300).addScaledVector(car.vel, 0.3); _v2.x += (Math.random() - 0.5) * 120; _v2.y += (Math.random() - 0.5) * 120; _v2.z += (Math.random() - 0.5) * 120;
           spawn(_v, _v2, 30 + Math.random() * 25, Math.random() < 0.5 ? 0xffb050 : 0xff7a20, 0.28 + Math.random() * 0.2, { drag: 3 });
         }
@@ -248,10 +249,13 @@ RL.FX = (function () {
   // ---- bloom (cheap: downsample bright pass, 2 blur passes, additive composite) ----
   let bloom = null;
   function makeBloom(renderer) {
-    const rtOpts = { type: THREE.HalfFloatType, depthBuffer: false };
-    const scale = quality === 'high' ? 0.5 : 0.35;
+    // Performance preset & mobile default: render directly to screen (no offscreen FBO / MSAA resolve / bloom overhead)
+    if (quality === 'low' || (RL.IS_MOBILE && quality !== 'high')) { bloom = null; return; }
+    const rtOpts = { type: RL.IS_MOBILE ? THREE.UnsignedByteType : THREE.HalfFloatType, depthBuffer: false };
+    const scale = (quality === 'high' && !RL.IS_MOBILE) ? 0.5 : 0.3;
     const w = Math.max(1, Math.floor(renderer.domElement.width * scale)), h = Math.max(1, Math.floor(renderer.domElement.height * scale));
-    const rtScene = new THREE.WebGLRenderTarget(renderer.domElement.width, renderer.domElement.height, { type: quality === 'low' ? THREE.UnsignedByteType : THREE.HalfFloatType, depthBuffer: true, samples: quality === 'high' ? 4 : (quality === 'medium' ? 2 : 4) });
+    const samples = RL.IS_MOBILE ? 0 : (quality === 'high' ? 4 : 2);
+    const rtScene = new THREE.WebGLRenderTarget(renderer.domElement.width, renderer.domElement.height, { type: RL.IS_MOBILE ? THREE.UnsignedByteType : THREE.HalfFloatType, depthBuffer: true, samples });
     const rtA = new THREE.WebGLRenderTarget(w, h, rtOpts), rtB = new THREE.WebGLRenderTarget(w, h, rtOpts);
     const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
     const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -261,24 +265,18 @@ RL.FX = (function () {
     const comp = new THREE.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, tBloom: { value: null }, strength: { value: 0.55 } }, vertexShader: vs, fragmentShader: 'uniform sampler2D tDiffuse; uniform sampler2D tBloom; uniform float strength; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); vec4 b = texture2D(tBloom, vUv); gl_FragColor = vec4(c.rgb + b.rgb * strength, 1.0); }', depthTest: false, depthWrite: false });
     const copy = new THREE.ShaderMaterial({ uniforms: { tDiffuse: { value: null } }, vertexShader: vs, fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main(){ gl_FragColor = texture2D(tDiffuse, vUv); }', depthTest: false, depthWrite: false });
     const sceneQ = new THREE.Scene(); sceneQ.add(quad);
-    bloom = { rtScene, rtA, rtB, quad, cam, bright, blur, comp, copy, sceneQ, w, h, enabled: quality !== 'low' };
+    bloom = { rtScene, rtA, rtB, quad, cam, bright, blur, comp, copy, sceneQ, w, h, passes: RL.IS_MOBILE ? 1 : 2, enabled: true };
   }
   function resizeBloom(renderer) { if (!bloom) return; disposeBloom(); makeBloom(renderer); }
   function disposeBloom() { if (!bloom) return; bloom.rtScene.dispose(); bloom.rtA.dispose(); bloom.rtB.dispose(); bloom = null; }
   function render(renderer, scene3, camera) {
-    if (!bloom) { renderer.render(scene3, camera); return; }
+    if (!bloom || !bloom.enabled) { renderer.render(scene3, camera); return; }
     const b = bloom;
     renderer.setRenderTarget(b.rtScene); renderer.render(scene3, camera);
     const tm = renderer.toneMapping; renderer.toneMapping = THREE.NoToneMapping;
-    if (!b.enabled) {
-      // performance preset: MSAA resolve + copy only (tone mapping already applied when rendering to the RT)
-      b.quad.material = b.copy; b.copy.uniforms.tDiffuse.value = b.rtScene.texture;
-      renderer.setRenderTarget(null); renderer.render(b.sceneQ, b.cam);
-      renderer.toneMapping = tm; return;
-    }
     b.quad.material = b.bright; b.bright.uniforms.tDiffuse.value = b.rtScene.texture; renderer.setRenderTarget(b.rtA); renderer.render(b.sceneQ, b.cam);
     b.quad.material = b.blur;
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < b.passes; i++) {
       b.blur.uniforms.tDiffuse.value = b.rtA.texture; b.blur.uniforms.dir.value.set(1 + i, 0); renderer.setRenderTarget(b.rtB); renderer.render(b.sceneQ, b.cam);
       b.blur.uniforms.tDiffuse.value = b.rtB.texture; b.blur.uniforms.dir.value.set(0, 1 + i); renderer.setRenderTarget(b.rtA); renderer.render(b.sceneQ, b.cam);
     }
