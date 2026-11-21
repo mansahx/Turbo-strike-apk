@@ -30,6 +30,15 @@ jobs:
 
       - name: Prepare web assets
         run: npm run prepare:web
+        run: |
+          if [ -f "Turbo Strike.html" ]; then
+            mkdir -p www
+            cp "Turbo Strike.html" www/index.html
+            if [ -d "js" ]; then
+              rm -rf www/js
+              cp -r js www/js
+            fi
+          fi
 
       - name: Generate Android project
         run: |
@@ -62,3 +71,4 @@ jobs:
         with:
           files: TurboStrike.apk
           generate_release_notes: true
+
