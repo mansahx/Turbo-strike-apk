@@ -28,9 +28,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Prepare web assets
+        run: npm run prepare:web
+
       - name: Generate Android project
         run: |
-          npx cap add android
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
           bash scripts/patch-android.sh
 
       - name: Sync web assets
